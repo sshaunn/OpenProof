@@ -13,8 +13,10 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .commands import doctor as doctor_cmd
 from .commands import import_claude as import_claude_cmd
 from .commands import init as init_cmd
+from .commands import status as status_cmd
 from .errors import EXIT_ERROR, OpenProofError
 
 
@@ -24,6 +26,14 @@ def _run_init(args: argparse.Namespace) -> int:
 
 def _run_import_claude(args: argparse.Namespace) -> int:
     return import_claude_cmd.run(Path.cwd())
+
+
+def _run_status(args: argparse.Namespace) -> int:
+    return status_cmd.run(Path.cwd())
+
+
+def _run_doctor(args: argparse.Namespace) -> int:
+    return doctor_cmd.run(Path.cwd())
 
 
 def _stub(name: str):
@@ -42,9 +52,9 @@ def _stub(name: str):
 _HANDLERS = {
     "init": _run_init,
     "import:claude": _run_import_claude,
-    "status": _stub("status"),
+    "status": _run_status,
     "commit": _stub("commit"),
-    "doctor": _stub("doctor"),
+    "doctor": _run_doctor,
 }
 
 

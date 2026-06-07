@@ -45,6 +45,6 @@ def test_init_via_real_cli_in_fresh_repo(fresh_repo):
 
 
 def test_unimplemented_command_fails_cleanly(fresh_repo):
-    result = _run(["status"], fresh_repo)
+    result = _run(["commit"], fresh_repo)
     assert result.returncode != 0
     assert "not implemented in this build" in result.stderr

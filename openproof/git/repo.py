@@ -75,6 +75,12 @@ def root_commits(cwd: Path | str) -> list[str]:
     return sorted(line.strip().lower() for line in r.stdout.splitlines() if line.strip())
 
 
+def tracked_under(cwd: Path | str, *paths: str) -> list[str]:
+    """Paths under ``paths`` that are tracked in the Git index (the P6/F4 authority check)."""
+    result = _git(["ls-files", *paths], cwd)
+    return [line for line in result.stdout.splitlines() if line.strip()]
+
+
 def repository_identity(cwd: Path | str) -> dict:
     """The §12c item-3 ``repositoryIdentity`` object — the portable committed fingerprint."""
     if not has_commits(cwd):

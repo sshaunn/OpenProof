@@ -33,10 +33,19 @@ def test_init_unbound_maps_to_exit_code(tmp_path, monkeypatch, capsys):
     assert "openproof:" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("argv", [["status"], ["commit"], ["doctor"]])
+@pytest.mark.parametrize("argv", [["commit"]])
 def test_unimplemented_commands_are_clear_stubs(argv, capsys):
     assert cli.main(argv) == EXIT_ERROR
     assert "not implemented in this build" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("command", ["status", "doctor"])
+def test_status_and_doctor_dispatch(command, fresh_repo, monkeypatch, capsys):
+    monkeypatch.chdir(fresh_repo)
+    from openproof.commands import init as init_cmd
+
+    init_cmd.run(fresh_repo, out=lambda *a: None)
+    assert cli.main([command]) == 0
 
 
 def test_import_claude_dispatches(fresh_repo, tmp_path, monkeypatch, capsys):
