@@ -43,9 +43,14 @@ markers = [
 
 [tool.coverage.run]
 source = ["openproof"]
-# __main__.py is a thin `python -m openproof` shim; it is exercised behaviorally by the
-# entry-point scenario test (a subprocess), which line-coverage cannot attribute.
-omit = ["openproof/__main__.py"]
+omit = [
+    # a thin `python -m openproof` shim; exercised behaviorally by the entry-point scenario
+    # test (a subprocess), which line-coverage cannot attribute.
+    "openproof/__main__.py",
+    # a type-only Protocol interface (the source-adapter seam); no executable logic. Its
+    # structural conformance is asserted by tests/component/test_source_protocol.py.
+    "openproof/sources/base.py",
+]
 
 [tool.coverage.report]
 show_missing = true
