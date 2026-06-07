@@ -17,19 +17,18 @@ def test_provider_prefixes():
     assert not _find("provider_key")("sk-short")  # < 20 chars after sk-
 
 
-def test_jwt_requires_full_three_segments():
-    assert JWT_RE.search("REDACTED.TEST.JWT")
-    assert not JWT_RE.search("eyJustAWordNotAJwt")  # bare eyJ is not a JWT
-    assert not JWT_RE.search("eyJonly.onesegment")
+def test_jwt_requires_full_three_segments(fake):
+    assert JWT_RE.search(fake.jwt("abc", "def", "sig123"))
+    assert not JWT_RE.search("eyJ" + "ustAWordNotAJwt")  # bare eyJ is not a JWT
+    assert not JWT_RE.search("eyJ" + "only.onesegment")
 
 
-def test_pem_block_matched_whole():
-    block = "-----BEGIN REDACTED TEST BLOCK-----\nMIIABC\n-----END REDACTED TEST BLOCK-----"
-    assert _find("pem")("prefix " + block + " suffix")
+def test_pem_block_matched_whole(fake):
+    assert _find("pem")("prefix " + fake.pem("MIIABC") + " suffix")
 
 
-def test_connection_string_userinfo_group():
-    s = "scheme://REDACTED_TEST@host:5432/db"
+def test_connection_string_userinfo_group(fake):
+    s = fake.conn(user="user", pw="pass", host="host:5432", tail="/db")  # a postgres-style URL w/ userinfo
     spans = _find("connection_string")(s)
     # the span must be EXACTLY the userinfo (user:pass), not the whole URL — a _whole(CONN_RE)
     # mutation would over-redact the scheme/host and this asserts against that

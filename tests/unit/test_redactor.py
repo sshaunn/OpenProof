@@ -46,8 +46,8 @@ def test_match_ordinal_is_record_local_in_traversal_order():
     assert res.payload["b"].endswith("#1>")
 
 
-def test_overlap_resolves_to_single_leftmost_longest_placeholder():
-    res = r({"x": "password=scheme://REDACTED_TEST@host"})
+def test_overlap_resolves_to_single_leftmost_longest_placeholder(fake):
+    res = r({"x": "password=" + fake.conn(user="u", pw="p", host="host")})
     assert len(res.markers) == 1
     assert res.markers[0].type == "credential_keyword"  # outer value span wins
 
@@ -78,8 +78,8 @@ def test_marker_span_covers_the_placeholder_bytes():
     assert redacted.encode("utf-8")[marker.span.start_byte:marker.span.end_byte] == token.encode("utf-8")
 
 
-def test_multiple_placeholders_in_one_field_have_distinct_ascending_spans():
-    res = r({"cmd": "export TUSHARE_TOKEN=tok_abc123 && Authorization: Bearer REDACTED.TEST.JWT"})
+def test_multiple_placeholders_in_one_field_have_distinct_ascending_spans(fake):
+    res = r({"cmd": "export TUSHARE_TOKEN=tok_abc123 && Authorization: " + fake.bearer(fake.jwt("h", "p", "sig"))})
     assert len(res.markers) == 2
     assert all(m.field_path == "/cmd" for m in res.markers)
     redacted = res.payload["cmd"].encode("utf-8")
@@ -101,7 +101,7 @@ def test_span_is_utf8_byte_offset_after_non_bmp():
 
 def test_span_locates_real_placeholder_not_a_coincidental_literal():
     # a literal placeholder string in the surrounding text must NOT steal the span
-    res = r({"cmd": "<REDACTED:credential_keyword#0> and DB_PASSWORD=hunter2"})
+    res = r({"cmd": "<REDACTED:credential_keyword#0> and DB_PASSWORD=" + "hunter2"})
     marker = res.markers[0]
     real_prefix = "<REDACTED:credential_keyword#0> and DB_PASSWORD="
     assert marker.span.start_byte == len(real_prefix.encode("utf-8"))

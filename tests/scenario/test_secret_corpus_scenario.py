@@ -42,13 +42,13 @@ def test_each_env_var_form_redacts_the_value(form):
     assert "<REDACTED:credential_keyword#0>" in res.payload["line"]
 
 
-def test_each_redaction_family_present():
+def test_each_redaction_family_present(fake):
     record = {
-        "pem": "-----BEGIN REDACTED TEST BLOCK-----\nMIIabc\n-----END REDACTED TEST BLOCK-----",
-        "provider": "sk-" + "A" * 30,
-        "bearer": "Authorization: Bearer REDACTED_TEST",
-        "conn": "scheme://REDACTED_TEST@db:5432/app",
-        "jwt": "id=REDACTED.TEST.JWT",
+        "pem": fake.pem("MIIabc"),
+        "provider": fake.provider_key("sk-", 30),
+        "bearer": "Authorization: " + fake.bearer("tok_abc_def"),
+        "conn": fake.conn(user="user", pw="secretpw", host="db:5432", tail="/app"),
+        "jwt": "id=" + fake.jwt("hdr", "pld", "sigpart"),
         "cred": "TUSHARE_TOKEN=abc123",
     }
     res = r(record)

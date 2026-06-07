@@ -28,19 +28,26 @@ REQUIRED_COMMANDS = {"init", "import", "status", "commit", "doctor"}
 REQUIRED_IMPORT_SOURCES = {"claude"}
 NEVER_TRACKED = [".openproof/raw", ".openproof/vault", ".openproof/staging"]
 
-# High-signal secret shapes (the §6.5 tier-A families). These deliberately require real
-# entropy after the prefix, so pattern-DEFINITION code (regex literals with [ ] { }) and
-# keyword *lists* never self-match — verified against this file.
-SECRET_SHAPES = [
+# FORMAT-RECOGNIZABLE secret shapes a scanner (GitHub's secret scanning OR this gate) flags
+# by SHAPE, fake or not. Scanned over the WHOLE tracked tree — INCLUDING tests/ — because a
+# committed secret-shaped literal is an incident regardless of where it lives. (CON-SEC: test
+# fixtures MUST build secret-shaped strings at runtime from split fragments, so no contiguous
+# token ever appears in source.) These require real entropy after the prefix, so regex
+# DEFINITIONS ([ ] { } after the prefix) and split fragments never self-match — verified.
+SCANNER_SHAPES = [
     re.compile(r"sk-[A-Za-z0-9]{20,}"),
     re.compile(r"AKIA[0-9A-Z]{16}"),
-    re.compile(r"ghp_[A-Za-z0-9]{36}"),
+    re.compile(r"ghp_[A-Za-z0-9]{30,}"),
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
-    re.compile(
-        r"(?i)(?:password|passwd|secret|token|api_key|apikey|access_key|secret_key|"
-        r"private_key|client_secret)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{8,}"
-    ),
+    re.compile(r"(?i)(?:postgres(?:ql)?|mysql|mongodb|redis|amqp|https?)://[A-Za-z0-9_.\-]+:[A-Za-z0-9_.\-]+@"),
+    re.compile(r"eyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+"),
 ]
+# additionally, the TOOL SOURCE (not test fixtures) must carry no credential-keyword secret.
+SOURCE_CREDENTIAL = re.compile(
+    r"(?i)(?:password|passwd|secret|token|api_key|apikey|access_key|secret_key|"
+    r"private_key|client_secret)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{8,}"
+)
+PKG_SOURCE_PREFIXES = ("openproof/", "scripts/")
 
 PASS, FAIL = "PASS", "FAIL"
 _PYTEST: dict = {}
@@ -93,15 +100,22 @@ def predicate_safety_p6():
 
 
 def predicate_no_secret_in_source():
-    hits = [
-        f"{py.relative_to(REPO)} ~ /{rx.pattern[:18]}.../"
-        for base in PKG_SOURCE_DIRS
-        for py in base.rglob("*.py")
-        for rx in SECRET_SHAPES
-        if rx.search(py.read_text(encoding="utf-8"))
-    ]
-    return (FAIL, f"possible secret literal(s): {hits}") if hits else (
-        PASS, "no secret literal in tool source",
+    # scan EVERY git-tracked file (what a scanner — and GitHub — actually sees)
+    tracked = [ln.strip() for ln in _run(["git", "ls-files"]).stdout.splitlines() if ln.strip()]
+    hits = []
+    for rel in tracked:
+        path = REPO / rel
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, FileNotFoundError, IsADirectoryError):
+            continue
+        for rx in SCANNER_SHAPES:
+            if rx.search(text):
+                hits.append(f"{rel} ~ format-secret /{rx.pattern[:16]}.../")
+        if rel.startswith(PKG_SOURCE_PREFIXES) and SOURCE_CREDENTIAL.search(text):
+            hits.append(f"{rel} ~ credential-keyword secret")
+    return (FAIL, f"COMMITTED SECRET-SHAPED LITERAL(s): {hits}") if hits else (
+        PASS, f"no secret-shaped literal in any of {len(tracked)} tracked files",
     )
 
 
@@ -126,7 +140,7 @@ GATE_PREDICATES = [
     ("B2 coverage 100%", predicate_coverage),
     ("B3 test layers present", predicate_test_layers),
     ("B4 payload never tracked (P6)", predicate_safety_p6),
-    ("B5 no secret in tool source", predicate_no_secret_in_source),
+    ("B5 no committed secret-shaped literal (whole tree)", predicate_no_secret_in_source),
     ("B6 frozen 5-command surface", predicate_command_surface),
 ]
 

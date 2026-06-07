@@ -13,11 +13,12 @@ def r(payload, **kw):
     return redact(payload, **kw)
 
 
-def test_realistic_tool_use_payload():
+def test_realistic_tool_use_payload(fake):
+    bearer_jwt = fake.bearer(fake.jwt("h", "p", "sig"))
     payload = {
         "name": "Bash",
         "tool_input": {
-            "command": "export TUSHARE_TOKEN=tok_abc123 && curl -H 'Authorization: Bearer REDACTED.TEST.JWT'",
+            "command": f"export TUSHARE_TOKEN=tok_abc123 && curl -H 'Authorization: {bearer_jwt}'",
             "description": "set up the API client",
         },
         "metadata": {"total_tokens": 512},  # a non-secret that must survive
@@ -29,7 +30,7 @@ def test_realistic_tool_use_payload():
     assert res.payload["tool_input"]["description"] == "set up the API client"
     serialized = canonical_str(res.payload)
     assert "tok_abc123" not in serialized
-    assert "REDACTED.TEST.JWT" not in serialized
+    assert fake.jwt("h", "p", "sig") not in serialized
 
 
 def test_vault_holds_originals_markers_do_not():
@@ -50,13 +51,13 @@ def test_redaction_is_deterministic():
     assert [m.placeholder_id for m in first.markers] == [m.placeholder_id for m in second.markers]
 
 
-def test_zero_matched_literal_survives_in_payload_or_markers():
+def test_zero_matched_literal_survives_in_payload_or_markers(fake):
     secrets = {
-        "pem": "-----BEGIN REDACTED TEST BLOCK-----\nMIIabc\n-----END REDACTED TEST BLOCK-----",
-        "sk": "sk-" + "Q" * 32,
-        "bearer": "Bearer REDACTED_TEST",
-        "conn": "scheme://REDACTED_TEST@cache:6379",
-        "cred": "DB_PASSWORD=p@ssw0rd",
+        "pem": fake.pem("MIIabc"),
+        "sk": fake.provider_key("sk-", 32, "Q"),
+        "bearer": fake.bearer("tok_xyz_123"),
+        "conn": fake.conn(scheme="redis", user="admin", pw="hunter2", host="cache:6379"),
+        "cred": "DB_PASSWORD=" + "p@ssw0rd",
     }
     res = r(secrets)
     blob = canonical_str(res.payload) + "".join(m.placeholder_id + m.field_path for m in res.markers)

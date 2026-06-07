@@ -50,3 +50,29 @@ def layout_of():
     (so tests match ``init``'s own toplevel on macOS, where /var is a symlink)."""
 
     return lambda path: Layout(Path(gitrepo.resolve_toplevel(path)))
+
+
+@pytest.fixture
+def fake():
+    """Builders for secret-SHAPED test inputs assembled at RUNTIME from inert fragments.
+
+    CONSTITUTION (no-committed-secret rule): NO source file may contain a contiguous
+    secret-shaped token — even a fake one — because a secret scanner (GitHub's or our own
+    gate's B5) flags the SHAPE, not the realness. So provider keys, connection-string
+    credentials, PEM blocks, JWTs, and Bearer tokens are built here from split fragments.
+    """
+
+    _begin = "-----BEGIN RSA PRIVATE" + " KEY-----"
+    _end = "-----END RSA PRIVATE" + " KEY-----"
+
+    class Fake:
+        provider_key = staticmethod(lambda prefix, n=36, ch="A": prefix + ch * n)
+        conn = staticmethod(
+            lambda scheme="postgres", user="user", pw="pw", host="host", tail="":
+            f"{scheme}://{user}:{pw}@{host}{tail}"
+        )
+        pem = staticmethod(lambda body="MIIbody": _begin + "\n" + body + "\n" + _end)
+        jwt = staticmethod(lambda h="hdr", p="pld", s="sig": "eyJ" + h + ".eyJ" + p + "." + s)
+        bearer = staticmethod(lambda tok="tok_abcdef": "Bearer " + tok)
+
+    return Fake()

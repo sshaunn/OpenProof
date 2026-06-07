@@ -29,13 +29,14 @@ def test_import_claude_writes_a_redacted_ledger(fresh_repo, layout_of, tmp_path)
     repo_root = layout.repo_root
     projects = tmp_path / "projects"
 
+    secret_pw = "hunter2" + "secret"  # built at runtime — never a contiguous literal in source
     records = [
         {"type": "user", "uuid": "u1", "cwd": str(repo_root), "sessionId": "sess-A", "version": "1.0",
          "message": {"role": "user", "content": "set up the db"}},
         {"type": "assistant", "uuid": "a1", "cwd": str(repo_root),
          "message": {"role": "assistant", "content": [
              {"type": "tool_use", "id": "tu1", "name": "Bash",
-              "input": {"command": "export DB_PASSWORD=REDACTED_TEST && psql"}}]}},
+              "input": {"command": f"export DB_PASSWORD={secret_pw} && psql"}}]}},
     ]
     _write_session(projects, repo_root, "sess-A", records)
 
@@ -47,16 +48,16 @@ def test_import_claude_writes_a_redacted_ledger(fresh_repo, layout_of, tmp_path)
     # WHEN imported, the redacted ledger exists and the secret is neutralized
     raw_file = layout.raw / "claude_jsonl" / "sess-A.jsonl"
     assert raw_file.exists()
-    assert "REDACTED_TEST" not in raw_file.read_text(encoding="utf-8")
+    assert secret_pw not in raw_file.read_text(encoding="utf-8")
 
     # the original lives ONLY in the vault (reversible, local)
     secrets = json.loads((layout.vault / "secrets-map.json").read_text(encoding="utf-8"))
-    assert any(v["original"] == "REDACTED_TEST" for v in secrets.values())
+    assert any(v["original"] == secret_pw for v in secrets.values())
 
     # the unredacted mirror is written (the reversibility surface) and DOES hold the original
     mirror = layout.vault / "raw-unredacted" / "claude_jsonl" / "sess-A.jsonl"
     assert mirror.exists()
-    assert "REDACTED_TEST" in mirror.read_text(encoding="utf-8")
+    assert secret_pw in mirror.read_text(encoding="utf-8")
 
     # the frozen boundary is persisted (LOCAL-ONLY, under gitignored raw/) so P4 can run later
     assert (layout.boundaries / "claude_jsonl-sess-A.json").exists()

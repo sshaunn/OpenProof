@@ -32,7 +32,7 @@ def test_init_import_status_doctor_flow(fresh_repo, layout_of, tmp_path):
         {"type": "assistant", "uuid": "a1", "cwd": str(repo_root),
          "message": {"role": "assistant", "content": [
              {"type": "tool_use", "id": "t1", "name": "Bash",
-              "input": {"command": "export OPENAI_API_KEY=REDACTED_TEST"}}]}},
+              "input": {"command": "export OPENAI_API_KEY=" + ("sk-" + "k" * 30)}}]}},
         {"type": "system", "subtype": "compact_boundary", "cwd": str(repo_root), "content": "summary"},
     ]
     (projects / "sess-S.jsonl").write_text("\n".join(json.dumps(r) for r in records) + "\n", encoding="utf-8")

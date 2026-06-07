@@ -13,6 +13,34 @@
 
 ---
 
+## 0. NON-NEGOTIABLE — never commit a secret-shaped literal (CON-SEC)
+
+> **INCIDENT (2026-06-07):** GitHub secret scanning flagged **2 secret incidents** on commit
+> `31d6486` (build-step-2). The cause: test fixtures contained **contiguous secret-shaped
+> literals** — connection-string credentials (`scheme://user:pw@host`) and PEM/JWT blocks —
+> and the acceptance gate's B5 check only scanned `openproof/`+`scripts/`, **never `tests/`**.
+> A scanner flags the **SHAPE, not the realness**: a fake `redis://admin:…@host` is flagged
+> exactly like a real one. **This must NEVER happen again.**
+
+**The iron rule.** **No file committed to this repository may contain a contiguous
+secret-shaped token — even a fake/example one.** That includes provider-key prefixes
+(`sk-…`, `ghp_…`, `AKIA…`), connection-string credentials, PEM private-key blocks, JWTs,
+Bearer tokens, and credential-keyword assignments with a real-looking value. It applies to
+**all** tracked files: source, **tests**, fixtures, docs, comments, commit messages.
+
+**How (tests still need secret-shaped INPUTS):** build them at **runtime from inert split
+fragments**, never as a contiguous source literal. Use the `fake` fixture
+(`tests/conftest.py`): `fake.conn(...)`, `fake.pem(...)`, `fake.provider_key("sk-", n)`,
+`fake.jwt(...)`, `fake.bearer(...)`, or split inline (`"sk-" + "A"*30`, `f"KEY={var}"`). The
+string is identical at runtime; the *source bytes* never form a scanner-recognizable token.
+
+**Enforced (B5).** The acceptance gate's **B5 scans EVERY git-tracked file** (not just the
+package) for these shapes and **FAILS the gate** on any match — so a secret-shaped literal
+can never reach a commit. Real secrets (live keys, `.env`) are additionally never tracked
+(B4: `vault/`/`raw/`/`staging/` gitignored). When in doubt, construct it; never paste it.
+
+---
+
 ## 1. Supreme rule — faithful transcription, invent nothing
 
 Implementation is the **faithful transcription** of the frozen spec into code. **No new
@@ -111,3 +139,4 @@ invariants (§5).
 | # | Date | Amendment |
 |---|---|---|
 | 1 | 2026-06-07 | Ratified at build-step-1: the four test layers, 100% line coverage, the six-predicate acceptance gate, and the dogfood receipt trail. |
+| 2 | 2026-06-07 | **§0 CON-SEC added after a real GitHub secret-scanning incident** on `31d6486` (secret-shaped literals in test fixtures): no committed secret-shaped literal anywhere; test fixtures build them at runtime via the `fake` fixture; **B5 now scans every git-tracked file**, and the offending history was purged. |
