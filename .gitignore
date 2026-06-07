@@ -1,0 +1,39 @@
+# --- OpenProof design & process evidence — NOT shipped with the tool ---
+# The frozen spec, implementation plan, review history, scenario understanding, and the
+# build log are the maintainer's design history. They live here locally but are never
+# committed to the published tool repo.
+docs/
+
+# --- The dogfood ledger created by running `openproof init` on this repo itself ---
+# This is the same .openproof/ a user's project gets; we never ship our local ledger.
+.openproof/
+
+# --- Python build / packaging artifacts ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+
+# --- Test / coverage artifacts ---
+.pytest_cache/
+.coverage
+.coverage.*
+.gate-coverage.json
+htmlcov/
+coverage.xml
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+.env
+
+# --- Editors / OS ---
+.idea/
+.vscode/
+.DS_Store
+*.swp

@@ -1,0 +1,20 @@
+# OpenProof ship-by-default .gitignore (the §9 / §17-task-1 artifact).
+# Written by `openproof init`; safe to regenerate.
+#
+# SAFETY INVARIANT (P6/F4): raw/, vault/, and staging/ are NEVER tracked.
+# `git ls-files .openproof/raw .openproof/vault .openproof/staging` must stay empty.
+# Transcript payload enters Git ONLY as an immutable redacted receipt under
+# committed/<ledgerStateHash>/ via a deliberate `openproof commit`.
+
+# unredacted originals + reversible secrets map — local only, never shared
+vault/
+
+# redacted append-only transcript ledger — local by default
+raw/
+
+# commit candidate staging area — local, torn down on decline/abort
+staging/
+
+# any local/derived index or cache (rebuildable, never canonical)
+index.cache
+*.index.db

@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openproof"
+version = "0.1.0"
+description = "A local-first, Git-first evidence ledger and commit-safety gate around Claude Code."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "OpenProof" }]
+# v0.1 is stdlib-first: zero runtime dependencies (argparse, hashlib, json, re,
+# subprocess, unicodedata, decimal, base64 all ship with CPython).
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "pytest-cov>=4.1", "coverage>=7.0"]
+
+[project.scripts]
+openproof = "openproof.cli:main"
+
+[tool.setuptools]
+packages = [
+    "openproof",
+    "openproof.canonical",
+    "openproof.commands",
+    "openproof.git",
+    "openproof.spec",
+]
+
+[tool.setuptools.package-data]
+"openproof.spec" = ["*.tmpl"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "unit: a single pure function/class, no I/O",
+    "component: a subsystem via its public interface (sandboxed fs/git)",
+    "scenario: an end-to-end user story from the spec (§7 workflow / §17 tasks)",
+]
+
+[tool.coverage.run]
+source = ["openproof"]
+# __main__.py is a thin `python -m openproof` shim; it is exercised behaviorally by the
+# entry-point scenario test (a subprocess), which line-coverage cannot attribute.
+omit = ["openproof/__main__.py"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_also = [
+    "if __name__ == .__main__.:",
+]
