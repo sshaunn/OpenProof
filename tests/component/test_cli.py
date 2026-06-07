@@ -33,10 +33,10 @@ def test_init_unbound_maps_to_exit_code(tmp_path, monkeypatch, capsys):
     assert "openproof:" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("argv", [["commit"]])
-def test_unimplemented_commands_are_clear_stubs(argv, capsys):
-    assert cli.main(argv) == EXIT_ERROR
-    assert "not implemented in this build" in capsys.readouterr().err
+def test_commit_dispatches(fresh_repo, monkeypatch, capsys):
+    # all five commands are implemented now; commit without init exits cleanly (NotInitialized)
+    monkeypatch.chdir(fresh_repo)
+    assert cli.main(["commit"]) == 4  # EXIT_NOT_INITIALIZED
 
 
 @pytest.mark.parametrize("command", ["status", "doctor"])

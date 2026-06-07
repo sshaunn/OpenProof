@@ -12,7 +12,8 @@ from ..canonical.encoding import canonical_bytes
 from ..config import Layout
 from ..models.session import ImportedSession, SourceBoundary
 
-__all__ = ["session_to_dict", "write_session", "read_raw_lines", "write_boundary", "read_boundary"]
+__all__ = ["session_to_dict", "write_session", "read_raw_lines", "write_boundary", "read_boundary",
+           "read_unparsed", "iter_sessions"]
 
 
 def session_to_dict(session: ImportedSession) -> dict:
@@ -37,10 +38,19 @@ def _jsonl(dicts) -> bytes:
     return b"".join(canonical_bytes(d) + b"\n" for d in dicts)
 
 
-def write_session(layout: Layout, source: str, session_id: str, *, raw_lines, unredacted_lines, vault_map, session) -> None:
+def write_session(layout: Layout, source: str, session_id: str, *, raw_lines, unredacted_lines,
+                  vault_map, session, unparsed_records=()) -> None:
     raw_path = layout.raw / source / f"{session_id}.jsonl"
     raw_path.parent.mkdir(parents=True, exist_ok=True)
     raw_path.write_bytes(_jsonl(raw_lines))
+
+    # surfaced unknown records (local-only, gitignored; redacted into the receipt at commit)
+    unparsed_path = layout.raw / "_unparsed" / source / f"{session_id}.jsonl"
+    unparsed_path.parent.mkdir(parents=True, exist_ok=True)
+    unparsed_path.write_bytes(_jsonl(
+        {"recordIndex": u.record_index, "recordType": u.record_type, "recordSubtype": u.record_subtype, "raw": u.raw}
+        for u in unparsed_records
+    ))
 
     mirror = layout.vault / "raw-unredacted" / source / f"{session_id}.jsonl"
     mirror.parent.mkdir(parents=True, exist_ok=True)
@@ -61,6 +71,26 @@ def write_session(layout: Layout, source: str, session_id: str, *, raw_lines, un
 def read_raw_lines(layout: Layout, source: str, session_id: str) -> bytes:
     raw_path = layout.raw / source / f"{session_id}.jsonl"
     return raw_path.read_bytes() if raw_path.exists() else b""
+
+
+def _read_jsonl(path: Path) -> list:
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def read_unparsed(layout: Layout, source: str, session_id: str) -> list:
+    """The local-only surfaced unknown records for a session (read at commit time)."""
+    return _read_jsonl(layout.raw / "_unparsed" / source / f"{session_id}.jsonl")
+
+
+def iter_sessions(layout: Layout):
+    """Yield ``(source, session_id)`` for every imported session, from sessions/*.yml."""
+    if not layout.sessions.exists():
+        return
+    for path in sorted(layout.sessions.glob("*.yml")):
+        summary = json.loads(path.read_text(encoding="utf-8"))
+        yield summary["source"], summary["sessionId"]
 
 
 def _boundary_path(layout: Layout, source: str, session_id: str) -> Path:

@@ -66,3 +66,10 @@ def test_run_outside_git_is_unbound(tmp_path):
 def test_read_raw_lines_absent_is_empty(fresh_repo, layout_of):
     init_cmd.run(fresh_repo, out=lambda *a: None)
     assert read_raw_lines(layout_of(fresh_repo), "claude_jsonl", "nope") == b""
+
+
+def test_read_unparsed_absent_is_empty(fresh_repo, layout_of):
+    from openproof.ledger.store import read_unparsed
+
+    init_cmd.run(fresh_repo, out=lambda *a: None)
+    assert read_unparsed(layout_of(fresh_repo), "claude_jsonl", "nope") == []

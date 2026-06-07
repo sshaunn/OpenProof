@@ -9,6 +9,6 @@ disclosure. The full commit-time gate (the local set-partition, P3–P5, F1–F5
 from __future__ import annotations
 
 from .predicates import DISCLOSURE, FAIL, NEEDS_HUMAN_REVIEW, PASS
-from .verdict import Verdict, evaluate
+from .verdict import Verdict, evaluate, evaluate_commit
 
-__all__ = ["DISCLOSURE", "PASS", "FAIL", "NEEDS_HUMAN_REVIEW", "Verdict", "evaluate"]
+__all__ = ["DISCLOSURE", "PASS", "FAIL", "NEEDS_HUMAN_REVIEW", "Verdict", "evaluate", "evaluate_commit"]

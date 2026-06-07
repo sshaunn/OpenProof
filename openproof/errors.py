@@ -31,3 +31,19 @@ class NotInitializedError(OpenProofError):
     """``.openproof/`` is absent; ``openproof init`` has not been run here."""
 
     exit_code = EXIT_NOT_INITIALIZED
+
+
+EXIT_GATE_BLOCKED = 5
+EXIT_CORRUPTION = 6
+
+
+class GateBlockedError(OpenProofError):
+    """The release gate did not PASS — ``commit`` aborts without promoting."""
+
+    exit_code = EXIT_GATE_BLOCKED
+
+
+class ReceiptCorruptionError(OpenProofError):
+    """F5: an immutable ``committed/<hash>/`` receipt already exists with non-identical bytes."""
+
+    exit_code = EXIT_CORRUPTION

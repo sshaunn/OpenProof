@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .commands import commit as commit_cmd
 from .commands import doctor as doctor_cmd
 from .commands import import_claude as import_claude_cmd
 from .commands import init as init_cmd
@@ -36,16 +37,8 @@ def _run_doctor(args: argparse.Namespace) -> int:
     return doctor_cmd.run(Path.cwd())
 
 
-def _stub(name: str):
-    def run(args: argparse.Namespace) -> int:
-        print(
-            f"`openproof {name}` is a v0.1 command but is not implemented in this build "
-            "(build-step-1: scaffold + canonical kernel + init).",
-            file=sys.stderr,
-        )
-        return EXIT_ERROR
-
-    return run
+def _run_commit(args: argparse.Namespace) -> int:
+    return commit_cmd.run(Path.cwd(), ack_unparsed=getattr(args, "ack_unparsed", False))
 
 
 # command key → handler. `import` dispatches on its source subcommand.
@@ -53,7 +46,7 @@ _HANDLERS = {
     "init": _run_init,
     "import:claude": _run_import_claude,
     "status": _run_status,
-    "commit": _stub("commit"),
+    "commit": _run_commit,
     "doctor": _run_doctor,
 }
 
@@ -70,7 +63,9 @@ def _build_parser() -> argparse.ArgumentParser:
     imp_sources.add_parser("claude", help="discover + normalize Claude Code JSONL")
 
     sub.add_parser("status", help="binding, counts, unparsed warnings, gate result + disclosure")
-    sub.add_parser("commit", help="the only promotion path: gate → staged receipt → committed/")
+    commit = sub.add_parser("commit", help="the only promotion path: gate → staged receipt → committed/")
+    commit.add_argument("--ack-unparsed", action="store_true",
+                        help="acknowledge unparsed record types (clears N2) before the gate")
     sub.add_parser("doctor", help="read-only diagnostics: re-assert v0.1 safety invariants")
     return parser
 

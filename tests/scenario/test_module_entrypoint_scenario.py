@@ -44,7 +44,9 @@ def test_init_via_real_cli_in_fresh_repo(fresh_repo):
     assert (fresh_repo / ".openproof" / ".gitignore").exists()
 
 
-def test_unimplemented_command_fails_cleanly(fresh_repo):
+def test_commit_without_init_fails_cleanly(fresh_repo):
+    # commit is implemented; without init it exits cleanly with the guidance (no traceback)
     result = _run(["commit"], fresh_repo)
     assert result.returncode != 0
-    assert "not implemented in this build" in result.stderr
+    assert "init" in result.stderr.lower()
+    assert "Traceback" not in result.stderr

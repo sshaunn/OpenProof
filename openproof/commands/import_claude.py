@@ -81,6 +81,7 @@ def run(cwd: Path | str = ".", *, out=print, projects_dir: Path | None = None) -
             layout, "claude_jsonl", session_id,
             raw_lines=outcome.raw_lines, unredacted_lines=outcome.unredacted_lines,
             vault_map=outcome.vault_map, session=outcome.session,
+            unparsed_records=outcome.unparsed_records,
         )
         write_boundary(layout, outcome.boundary)  # §12a: persist so a later import can classify (P4)
         s = outcome.session

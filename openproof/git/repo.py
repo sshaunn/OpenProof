@@ -81,6 +81,11 @@ def tracked_under(cwd: Path | str, *paths: str) -> list[str]:
     return [line for line in result.stdout.splitlines() if line.strip()]
 
 
+def git_add(cwd: Path | str, *paths: str) -> bool:
+    """``git add -- <paths>`` (never ``-f``); returns True on success."""
+    return _git(["add", "--", *paths], cwd).returncode == 0
+
+
 def repository_identity(cwd: Path | str) -> dict:
     """The §12c item-3 ``repositoryIdentity`` object — the portable committed fingerprint."""
     if not has_commits(cwd):

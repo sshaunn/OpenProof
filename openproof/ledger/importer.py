@@ -26,6 +26,7 @@ class ImportOutcome:
     raw_lines: list
     unredacted_lines: list
     vault_map: dict
+    unparsed_records: tuple  # the raw UnparsedRecords (local-only; redacted into the receipt at commit)
 
 
 def import_session(source: str, session_id: str, data: bytes, *, schema_version: int,
@@ -75,4 +76,4 @@ def import_session(source: str, session_id: str, data: bytes, *, schema_version:
         thinking_signature_omitted_count=normalized.thinking_signature_omitted_count,
         redaction_summary=dict(redaction_summary),
     )
-    return ImportOutcome(session, boundary, raw_lines, unredacted_lines, vault_map)
+    return ImportOutcome(session, boundary, raw_lines, unredacted_lines, vault_map, normalized.unparsed_records)

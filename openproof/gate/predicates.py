@@ -80,3 +80,63 @@ def n2_unparsed(layout: Layout, sessions: list):
 
 
 PREDICATES = (p1_binding, p2_accounting, p6_never_tracked, n2_unparsed)
+
+
+# --- commit-time predicates (need the committed event/unparsed/vault state) ---
+
+def p2_set_partition(sessions, event_lines, unparsed_envelopes):
+    """The receipt-only §12a P2: per-session, the distinct parsed indices (event rawOffsets)
+    and unparsed indices are disjoint, in range, and match the committed counts (F1)."""
+    parsed, unparsed = {}, {}
+    for line in event_lines:
+        key = (line["source"], line["sessionId"])
+        for index in line["rawOffsets"]:
+            parsed.setdefault(key, set()).add(index)
+    for env in unparsed_envelopes:
+        key = (env["source"], env["sessionId"])
+        bucket = unparsed.setdefault(key, set())
+        if env["recordIndex"] in bucket:
+            return ("P2 no record silently dropped", FAIL, f"duplicate unparsed index in {key}")
+        bucket.add(env["recordIndex"])
+    for summary in sessions:
+        key = (summary["source"], summary["sessionId"])
+        p, u, n = parsed.get(key, set()), unparsed.get(key, set()), summary["sourceRecordCount"]
+        if p & u:
+            return ("P2 no record silently dropped", FAIL, f"parsed/unparsed index overlap in {key}")
+        if any(not (0 <= i < n) for i in p | u):
+            return ("P2 no record silently dropped", FAIL, f"index out of range in {key}")
+        if len(p) != summary["parsedSourceRecordCount"] or len(u) != summary["unparsedRecordCount"]:
+            return ("P2 no record silently dropped", FAIL, f"index count disagrees with summary in {key}")
+        if summary["parsedSourceRecordCount"] + summary["knownNoiseCount"] + summary["unparsedRecordCount"] != n:
+            return ("P2 no record silently dropped", FAIL, f"partition arithmetic broken for {key}")
+    return ("P2 no record silently dropped", PASS, "per-session set-partition well-formed")
+
+
+def _source_pos(line):
+    """A source-order key for an event: (sessionId, earliest source record index)."""
+    return (line.get("sessionId"), min(line["rawOffsets"]) if line.get("rawOffsets") else 0)
+
+
+def p3_pairing(event_lines):
+    """§12a P3: every tool_use has a paired tool_result, or the single unpaired one is the
+    single TRAILING in-progress tail; an interior unpaired tool_use → F2 FAIL."""
+    results = {line.get("pairId") for line in event_lines if line["kind"] == "tool_result"}
+    unpaired = [line for line in event_lines if line["kind"] == "tool_call" and line.get("pairId") not in results]
+    if len(unpaired) > 1:
+        return ("P3 pairing complete", FAIL, f"{len(unpaired)} interior unpaired tool_use")
+    if unpaired:
+        tail = unpaired[0]
+        later = [l for l in event_lines if l.get("sessionId") == tail.get("sessionId") and _source_pos(l) > _source_pos(tail)]
+        if later:  # something follows it in-session → it is interior, not the trailing tail
+            return ("P3 pairing complete", FAIL, "interior unpaired tool_use (not the trailing tail)")
+    return ("P3 pairing complete", PASS, "tool_use/tool_result paired" + (" (one trailing tail)" if unpaired else ""))
+
+
+def p5_f4_no_literal_in_receipt(receipt_bytes, vault_originals):
+    """§12a P5/F4 self-test: zero matched secret literal survives anywhere in the receipt."""
+    text = receipt_bytes.decode("utf-8", "replace")
+    survivors = [o for o in vault_originals if o and o in text]
+    if survivors:
+        return ("P5/F4 no matched literal in receipt", FAIL,
+                f"a matched secret literal survives in the receipt ({len(survivors)} field(s))")
+    return ("P5/F4 no matched literal in receipt", PASS, "zero matched literal in events/unparsed/manifest")
