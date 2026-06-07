@@ -7,9 +7,11 @@ addressed RawEvent ``id``. ``kind ∈ prompt|assistant_msg|tool_call|tool_result
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-__all__ = ["NativeAnchor", "NormalizedEvent", "UnparsedRecord", "NormalizeResult"]
+from .redaction import RedactionMarker
+
+__all__ = ["NativeAnchor", "NormalizedEvent", "UnparsedRecord", "NormalizeResult", "RawEvent"]
 
 
 @dataclass(frozen=True)
@@ -55,3 +57,26 @@ class NormalizeResult:
     unparsed_records: tuple[UnparsedRecord, ...]
     compaction_boundary_count: int
     thinking_signature_omitted_count: int
+
+
+@dataclass(frozen=True)
+class RawEvent:
+    """A normalized, REDACTED, content-addressed event — the citeable ledger spine (§8/§11).
+
+    ``id`` is a pure function of ``(source, sessionId, nativeAnchor, redacted payload,
+    schemaVersion)`` (``seq`` excluded), so re-import is idempotent. ``payload`` is the
+    redacted projection; the original lives only in the vault.
+    """
+
+    id: str
+    schema_version: int
+    source: str
+    session_id: str
+    kind: str
+    ts: str | None
+    native_anchor: NativeAnchor
+    payload: object
+    raw_offsets: tuple[int, ...]  # source-relative record indices only (never a path/byte range)
+    redaction_markers: tuple[RedactionMarker, ...] = ()
+    pair_id: str | None = None
+    trust: str = "HIGH"

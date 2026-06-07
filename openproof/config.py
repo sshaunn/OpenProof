@@ -48,6 +48,11 @@ class Layout:
     def staging(self) -> Path:
         return self.root / "staging"
 
+    @property
+    def boundaries(self) -> Path:
+        # LOCAL-ONLY sourceBoundary records, under the gitignored raw/ (never committed)
+        return self.raw / "_boundaries"
+
     # The one tracked transcript surface.
     @property
     def committed(self) -> Path:

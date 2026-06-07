@@ -13,12 +13,17 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .commands import import_claude as import_claude_cmd
 from .commands import init as init_cmd
 from .errors import EXIT_ERROR, OpenProofError
 
 
 def _run_init(args: argparse.Namespace) -> int:
     return init_cmd.run(Path.cwd())
+
+
+def _run_import_claude(args: argparse.Namespace) -> int:
+    return import_claude_cmd.run(Path.cwd())
 
 
 def _stub(name: str):
@@ -36,7 +41,7 @@ def _stub(name: str):
 # command key → handler. `import` dispatches on its source subcommand.
 _HANDLERS = {
     "init": _run_init,
-    "import:claude": _stub("import claude"),
+    "import:claude": _run_import_claude,
     "status": _stub("status"),
     "commit": _stub("commit"),
     "doctor": _stub("doctor"),

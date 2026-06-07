@@ -33,10 +33,22 @@ def test_init_unbound_maps_to_exit_code(tmp_path, monkeypatch, capsys):
     assert "openproof:" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("argv", [["status"], ["commit"], ["doctor"], ["import", "claude"]])
+@pytest.mark.parametrize("argv", [["status"], ["commit"], ["doctor"]])
 def test_unimplemented_commands_are_clear_stubs(argv, capsys):
     assert cli.main(argv) == EXIT_ERROR
     assert "not implemented in this build" in capsys.readouterr().err
+
+
+def test_import_claude_dispatches(fresh_repo, tmp_path, monkeypatch, capsys):
+    # `import claude` is implemented; with no Claude sessions for this repo it exits cleanly
+    monkeypatch.chdir(fresh_repo)
+    from openproof.commands import import_claude
+    from openproof.commands import init as init_cmd
+
+    init_cmd.run(fresh_repo, out=lambda *a: None)
+    monkeypatch.setattr(import_claude, "_claude_projects_dir", lambda: tmp_path / "none")
+    assert cli.main(["import", "claude"]) == 0
+    assert "No Claude sessions" in capsys.readouterr().out
 
 
 def test_no_command_prints_help(capsys):
