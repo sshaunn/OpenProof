@@ -15,7 +15,9 @@ authors = [{ name = "OpenProof" }]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=7.4", "pytest-cov>=4.1", "coverage>=7.0"]
+# setuptools is a TEST-runtime dep (test_packaging.py uses find_packages to guard wheel
+# discovery parity) — Python 3.12 venvs no longer ship it by default, so pin it explicitly.
+dev = ["pytest>=7.4", "pytest-cov>=4.1", "coverage>=7.0", "setuptools>=68"]
 
 [project.scripts]
 openproof = "openproof.cli:main"
