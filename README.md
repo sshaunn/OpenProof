@@ -19,13 +19,28 @@ ledger** → promote into Git as an **immutable receipt** you can hand to a seco
 | `openproof init` | Create `.openproof/`, write the ship-by-default `.gitignore`, pin `spec-version`, bind the repo. |
 | `openproof import claude` | Discover + normalize Claude JSONL, redact at the boundary, append to the local ledger. |
 | `openproof status` | Binding, counts, unparsed warnings, redaction summary, and the release-gate result. |
-| `openproof commit` | The only promotion path: gate → staged receipt → immutable `committed/<ledgerStateHash>/`. |
+| `openproof commit` | The only promotion path: gate → staged receipt → immutable `committed/<ledgerStateHash>/`. `--check` gates without promoting (see below). |
 | `openproof doctor` | Read-only diagnostics: re-assert the v0.1 safety invariants. |
 
 ## Safety invariant
 
 `raw/`, `vault/`, and `staging/` are **never tracked**. Transcript payload enters Git only as a
 deliberate, human-confirmed, redacted receipt under `committed/<ledgerStateHash>/`.
+
+## Gate a dev loop / CI on evidence integrity
+
+`openproof commit --check` runs the full commit-grade release gate and **exits with a clean
+code — `0` (PASS) or `5` (blocked) — without staging, prompting, or promoting anything**. A
+headless dev→test→review loop calls it directly (no shell wrapper) and halts on a non-zero exit:
+
+```sh
+openproof import claude            # capture the latest transcript (or via a SessionEnd hook)
+openproof commit --check           # exit 0 = evidence clean → proceed; exit 5 = halt
+# add --ack-unparsed to clear N2 (unrecognized record types) non-interactively
+```
+
+It guards the **evidence trail** (complete, untampered, no secret in the would-be receipt) —
+not your source tree. Promotion into Git stays the deliberate, human-reviewed `openproof commit`.
 
 ## Develop
 

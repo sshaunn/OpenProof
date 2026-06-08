@@ -133,6 +133,54 @@ def test_commit_outside_git_is_unbound(tmp_path):
         commit_cmd.run(tmp_path, out=lambda *a: None, confirm=lambda: True)
 
 
+def test_commit_check_passes_without_promoting(fresh_repo, layout_of, tmp_path):
+    # SCENARIO: a dev-loop / CI gate. `commit --check` runs the full commit-grade gate and
+    # exits 0 on PASS, but stages nothing, prompts nothing, promotes nothing.
+    layout = _setup(fresh_repo, layout_of, tmp_path, _clean_session())
+
+    def must_not_prompt():
+        raise AssertionError("--check must never reach the confirm prompt")
+
+    lines = []
+    assert commit_cmd.run(fresh_repo, out=lines.append, confirm=must_not_prompt, check=True) == 0
+    assert any("Gate check: PASS" in line for line in lines)
+    assert list(layout.committed.glob("*")) == []  # nothing promoted
+    assert list(layout.staging.glob("*")) == []     # nothing staged
+    assert _ls(layout, ".openproof/committed", ".openproof/staging") == []
+
+
+def test_commit_check_blocks_on_failing_gate_then_passes_with_ack(fresh_repo, layout_of, tmp_path):
+    # an unrecognized record type (N2) → the gate is NEEDS_HUMAN_REVIEW → `--check` exits 5
+    records = _clean_session() + [{"type": "system", "subtype": "compact_boundary", "content": "x", "uuid": "s1"}]
+    layout = _setup(fresh_repo, layout_of, tmp_path, records)
+    with pytest.raises(GateBlockedError):
+        commit_cmd.run(fresh_repo, out=lambda *a: None, check=True)
+    assert list(layout.committed.glob("*")) == [] and list(layout.staging.glob("*")) == []
+    # acknowledging clears N2 → --check now passes, but STILL promotes nothing
+    assert commit_cmd.run(fresh_repo, out=lambda *a: None, check=True, ack_unparsed=True) == 0
+    assert list(layout.committed.glob("*")) == []
+
+
+def test_commit_check_git_only_evidence_passes(committed_repo, layout_of):
+    # --check must work in GIT_ONLY_EVIDENCE mode too (git history, NO imported transcript)
+    init_cmd.run(committed_repo, out=lambda *a: None)
+    layout = layout_of(committed_repo)
+    lines = []
+    assert commit_cmd.run(committed_repo, out=lines.append, check=True) == 0
+    assert any("Gate check: PASS" in line for line in lines)
+    assert list(layout.committed.glob("*")) == []  # nothing promoted
+    assert list(layout.staging.glob("*")) == []
+
+
+def test_commit_check_reconciles_stale_staging_without_creating_new(fresh_repo, layout_of, tmp_path):
+    # --check runs reconcile (sweeps stale staging) but must not write any NEW staging itself
+    layout = _setup(fresh_repo, layout_of, tmp_path, _clean_session())
+    (layout.staging / "deadbeefstale").mkdir(parents=True)  # residue of a crashed prior commit
+    assert commit_cmd.run(fresh_repo, out=lambda *a: None, check=True) == 0
+    assert not (layout.staging / "deadbeefstale").exists()  # stale swept
+    assert list(layout.staging.glob("*")) == []             # no new candidate written
+
+
 def test_interrupt_at_prompt_removes_staging(fresh_repo, layout_of, tmp_path):
     layout = _setup(fresh_repo, layout_of, tmp_path, _clean_session())
 

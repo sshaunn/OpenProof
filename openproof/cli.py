@@ -38,7 +38,11 @@ def _run_doctor(args: argparse.Namespace) -> int:
 
 
 def _run_commit(args: argparse.Namespace) -> int:
-    return commit_cmd.run(Path.cwd(), ack_unparsed=getattr(args, "ack_unparsed", False))
+    return commit_cmd.run(
+        Path.cwd(),
+        ack_unparsed=getattr(args, "ack_unparsed", False),
+        check=getattr(args, "check", False),
+    )
 
 
 # command key → handler. `import` dispatches on its source subcommand.
@@ -66,6 +70,8 @@ def _build_parser() -> argparse.ArgumentParser:
     commit = sub.add_parser("commit", help="the only promotion path: gate → staged receipt → committed/")
     commit.add_argument("--ack-unparsed", action="store_true",
                         help="acknowledge unparsed record types (clears N2) before the gate")
+    commit.add_argument("--check", action="store_true",
+                        help="evaluate the release gate and exit (0=PASS, 5=blocked) WITHOUT staging or promoting")
     sub.add_parser("doctor", help="read-only diagnostics: re-assert v0.1 safety invariants")
     return parser
 

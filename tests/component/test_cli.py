@@ -39,6 +39,30 @@ def test_commit_dispatches(fresh_repo, monkeypatch, capsys):
     assert cli.main(["commit"]) == 4  # EXIT_NOT_INITIALIZED
 
 
+def test_commit_check_flag_is_wired(monkeypatch):
+    # `commit --check` must reach commit.run(check=True); bare `commit` is check=False.
+    # `--check` is a flag, NOT a new command — the five-command surface is unchanged.
+    captured = {}
+    monkeypatch.setattr(cli.commit_cmd, "run", lambda cwd, **kw: captured.update(kw) or EXIT_OK)
+    assert cli.main(["commit", "--check"]) == EXIT_OK
+    assert captured["check"] is True
+    captured.clear()
+    assert cli.main(["commit"]) == EXIT_OK
+    assert captured["check"] is False
+
+
+def test_commit_check_blocked_gate_maps_to_exit_5(monkeypatch):
+    # the loop/CI contract: a blocked gate must surface as exit code 5 at the CLI boundary,
+    # not 1. Pin the GateBlockedError → EXIT_GATE_BLOCKED mapping that `--check` relies on.
+    from openproof.errors import GateBlockedError
+
+    def blocked(cwd, **kw):
+        raise GateBlockedError("release gate is BLOCKED")
+
+    monkeypatch.setattr(cli.commit_cmd, "run", blocked)
+    assert cli.main(["commit", "--check"]) == 5
+
+
 @pytest.mark.parametrize("command", ["status", "doctor"])
 def test_status_and_doctor_dispatch(command, fresh_repo, monkeypatch, capsys):
     monkeypatch.chdir(fresh_repo)

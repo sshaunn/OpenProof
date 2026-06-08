@@ -3,6 +3,11 @@
 Reconcile → load the ledger → build the deterministic receipt → re-run the release gate
 (abort unless PASS) → write the candidate to gitignored ``staging/<hash>/`` → print the
 disclosure + external-scan instruction → confirm → promote transactionally.
+
+``--check`` stops at the gate: it evaluates the same commit-grade release gate and exits
+0 (PASS) or 5 (GateBlockedError) **without** staging, prompting, or promoting — the planned
+"fast-follow wiring" (errors.py) that lets a dev-loop / CI gate on evidence integrity with a
+clean exit code instead of a shell wrapper. It is a flag, so the v0.1 surface stays 5 commands.
 """
 
 from __future__ import annotations
@@ -61,7 +66,7 @@ def _ack_unparsed(layout: Layout) -> None:
             path.write_bytes(canonical_bytes(summary) + b"\n")
 
 
-def run(cwd: Path | str = ".", *, out=print, confirm=None, ack_unparsed=False, after_rename_hook=None) -> int:
+def run(cwd: Path | str = ".", *, out=print, confirm=None, ack_unparsed=False, check=False, after_rename_hook=None) -> int:
     cwd = Path(cwd)
     if not gitrepo.is_git_repo(cwd):
         raise UnboundRepoError(f"{cwd} is not inside a git repository — cannot bind.")
@@ -114,6 +119,10 @@ def run(cwd: Path | str = ".", *, out=print, confirm=None, ack_unparsed=False, a
         out(f"  [{result}] {name} — {detail}")
     if verdict.aggregate != PASS:
         raise GateBlockedError(f"release gate is {verdict.aggregate}; commit aborted (no promotion)")
+
+    if check:  # --check: the gate PASSED — report and stop. Never stage, prompt, or promote.
+        out("Gate check: PASS — no staging written, nothing promoted.")
+        return EXIT_OK
 
     # rebuild the receipt WITH the gate results (item 9) so the manifest is self-describing
     snapshot = build_snapshot(

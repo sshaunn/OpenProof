@@ -15,7 +15,7 @@ ledger, and promotes a gate-passing snapshot into Git as an immutable receipt.
 | `openproof init` | Create `.openproof/`, write the ship-by-default `.gitignore`, pin `spec-version`, record the portable repo fingerprint. |
 | `openproof import claude` | Discover this repo's Claude JSONL, normalize, redact at the boundary, append the redacted projection to local `raw/` and originals to `vault/`. |
 | `openproof status` | Binding, per-session counts, unparsed warnings, redaction summary, the release-gate result, and the qualified disclosure. |
-| `openproof commit` | The only Git-promotion path: re-run the gate (abort unless PASS), build the immutable content-addressed receipt, and promote it transactionally. |
+| `openproof commit` | The only Git-promotion path: re-run the gate (abort unless PASS), build the immutable content-addressed receipt, and promote it transactionally. `--check` evaluates the same gate and exits `0` (PASS) / `5` (blocked) **without** staging, prompting, or promoting — a dev-loop / CI gate. `--ack-unparsed` clears N2 first. |
 | `openproof doctor` | Read-only diagnostics: re-assert the safety invariants. |
 
 ## 2. On-disk layout
