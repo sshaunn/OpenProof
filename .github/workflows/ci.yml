@@ -30,3 +30,10 @@ jobs:
 
       - name: Acceptance gate (B1–B6, incl. whole-tree secret scan)
         run: python scripts/acceptance_gate.py
+
+      - name: Installability smoke (a real non-editable wheel, like a user's `pip install`)
+        run: |
+          python -m venv /tmp/wheel-env
+          /tmp/wheel-env/bin/pip install --quiet .
+          /tmp/wheel-env/bin/openproof --version
+          /tmp/wheel-env/bin/python -c "import openproof.gate, openproof.commit, openproof.ledger, openproof.models, openproof.sources"

@@ -20,14 +20,10 @@ dev = ["pytest>=7.4", "pytest-cov>=4.1", "coverage>=7.0"]
 [project.scripts]
 openproof = "openproof.cli:main"
 
-[tool.setuptools]
-packages = [
-    "openproof",
-    "openproof.canonical",
-    "openproof.commands",
-    "openproof.git",
-    "openproof.spec",
-]
+[tool.setuptools.packages.find]
+# auto-discover ALL openproof sub-packages, so a new one can never be silently left out of
+# the built wheel (an explicit list shipped a broken install in v0.1 — never again).
+include = ["openproof*"]
 
 [tool.setuptools.package-data]
 "openproof.spec" = ["*.tmpl"]
