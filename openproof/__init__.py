@@ -8,4 +8,6 @@ See ``docs/openproof-v0.1-definition.md`` (the frozen spec) and
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+# package version (independent of the FROZEN on-disk `SPEC_VERSION`/`SCHEMA_VERSION`).
+# 0.1.1 adds `commit --check` (gate-only exit code); the spec contract is unchanged.
+__version__ = "0.1.1"

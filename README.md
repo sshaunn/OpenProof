@@ -8,9 +8,49 @@ OpenProof is the tool *around* the AI coding loop, never one of the agents. v0.1
 one slice: import Claude Code JSONL → a **redacted, content-addressed, repo-bound evidence
 ledger** → promote into Git as an **immutable receipt** you can hand to a second party.
 
-> Status: **v0.1 feature-complete** — all five commands work end-to-end (100% test coverage).
-> The published on-disk contract is [SPEC.md](SPEC.md); the commercial boundary is
-> [COMMERCIAL-BOUNDARY.md](COMMERCIAL-BOUNDARY.md).
+> Status: **v0.1 feature-complete** (package `0.1.1`) — all five commands work end-to-end
+> (100% test coverage); `commit --check` adds a gate-only exit-code mode. The published
+> on-disk contract is [SPEC.md](SPEC.md) (`spec-version 0.1.0`, frozen); the commercial
+> boundary is [COMMERCIAL-BOUNDARY.md](COMMERCIAL-BOUNDARY.md).
+
+## Install
+
+A stdlib-only Python CLI (3.11+). Install globally with [pipx](https://pipx.pypa.io):
+
+```sh
+pipx install git+https://github.com/sshaunn/OpenProof.git
+pipx ensurepath          # if ~/.local/bin isn't on your PATH yet
+openproof --version      # openproof 0.1.1
+```
+
+**Upgrade to the latest:**
+
+```sh
+pipx upgrade openproof
+# if it reports "already at latest" (same version string), force a clean reinstall:
+pipx install --force git+https://github.com/sshaunn/OpenProof.git
+```
+
+## Quickstart
+
+```sh
+cd your-repo
+openproof init                     # bind the repo, write the ship-by-default .gitignore
+openproof import claude            # capture this repo's Claude sessions (redacted, local, gitignored)
+openproof status                   # counts + the release-gate verdict
+openproof commit                   # promote a redacted, immutable receipt into Git (human-reviewed)
+```
+
+**Capture automatically** — add a Claude Code `SessionEnd` hook (in `~/.claude/settings.json`
+for all repos, or `<repo>/.claude/settings.local.json` for one) so every session is recorded
+without a manual `import`:
+
+```json
+{ "hooks": { "SessionEnd": [ { "hooks": [ { "type": "command",
+  "command": "cd \"$CLAUDE_PROJECT_DIR\" && \"$HOME/.local/bin/openproof\" import claude || true" } ] } ] } }
+```
+
+(The hook only imports in repos you've `openproof init`'d — elsewhere it's a harmless no-op.)
 
 ## Commands (v0.1)
 
