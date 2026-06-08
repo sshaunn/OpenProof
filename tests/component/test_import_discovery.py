@@ -44,6 +44,30 @@ def test_discover_skips_a_foreign_repo(fresh_repo, layout_of, tmp_path, run_git)
     assert [m[1] for m in matches] == ["mine"]  # the foreign-repo session is excluded
 
 
+def test_discover_finds_cwd_not_in_first_record(fresh_repo, layout_of, tmp_path):
+    # real Claude sessions record the cwd a few records in (the first records are meta) —
+    # discovery must scan, not just read the first record
+    repo_root = layout_of(fresh_repo).repo_root
+    projects = tmp_path / "projects"
+    records = [
+        {"type": "summary", "summary": "no cwd here"},
+        {"type": "file-history-snapshot"},
+        {"type": "user", "uuid": "u1", "cwd": str(repo_root), "sessionId": "deep", "version": "1.2"},
+    ]
+    _session(projects / "slug", "deep", records)
+    matches = import_claude.discover(projects, repo_root)
+    assert [(m[1], m[2]) for m in matches] == [("deep", "1.2")]
+
+
+def test_discover_gives_up_after_scan_limit(fresh_repo, layout_of, tmp_path):
+    # a cwd buried past the scan limit is not discovered (bounded scan, never the whole file)
+    repo_root = layout_of(fresh_repo).repo_root
+    projects = tmp_path / "projects"
+    records = [{"type": "noise", "i": i} for i in range(250)] + [{"type": "user", "cwd": str(repo_root)}]
+    _session(projects / "s", "late", records)
+    assert import_claude.discover(projects, repo_root) == []
+
+
 def test_discover_skips_malformed_and_cwdless_sessions(fresh_repo, layout_of, tmp_path):
     repo_root = layout_of(fresh_repo).repo_root
     projects = tmp_path / "projects"

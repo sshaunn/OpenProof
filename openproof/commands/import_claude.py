@@ -25,14 +25,30 @@ def _claude_projects_dir() -> Path:
     return Path.home() / ".claude" / "projects"
 
 
-def _first_record(path: Path) -> dict | None:
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        if line.strip():
+_META_SCAN_LIMIT = 200  # the cwd is recorded a few records in (the first records can be meta)
+
+
+def _session_meta(path: Path):
+    """Stream the early records and return ``(cwd, sessionId, version)`` — scanning for the
+    first record that carries a ``cwd`` (it is not always the first record)."""
+    cwd = session_id = version = None
+    with path.open(encoding="utf-8", errors="replace") as handle:
+        for index, line in enumerate(handle):
+            if index >= _META_SCAN_LIMIT:
+                break
+            line = line.strip()
+            if not line:
+                continue
             try:
-                return json.loads(line)
+                record = json.loads(line)
             except json.JSONDecodeError:
-                return None
-    return None
+                continue
+            cwd = cwd or record.get("cwd")
+            session_id = session_id or record.get("sessionId")
+            version = version or record.get("version")
+            if cwd:
+                break
+    return cwd, session_id, version
 
 
 def discover(projects_dir: Path, repo_root: Path) -> list:
@@ -42,13 +58,12 @@ def discover(projects_dir: Path, repo_root: Path) -> list:
     real_root = str(Path(repo_root).resolve())
     matches = []
     for path in sorted(projects_dir.glob("*/*.jsonl")):
-        record = _first_record(path)
-        cwd = record.get("cwd") if record else None
+        cwd, session_id, version = _session_meta(path)
         if not cwd or not Path(cwd).is_dir():  # a session recorded on another machine/path
             continue
         toplevel = gitrepo.resolve_toplevel(cwd)
         if toplevel and str(Path(toplevel).resolve()) == real_root:
-            matches.append((path, record.get("sessionId") or path.stem, record.get("version")))
+            matches.append((path, session_id or path.stem, version))
     return matches
 
 
