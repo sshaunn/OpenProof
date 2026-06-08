@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    name: acceptance gate (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the gate's B4 (git ls-files) + B6 need the repo
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install (stdlib-first; dev tools only)
+        run: python -m pip install -e ".[dev]"
+
+      - name: Full suite + 100% coverage
+        run: python -m pytest --cov=openproof --cov-report=term-missing --cov-fail-under=100
+
+      - name: Acceptance gate (B1–B6, incl. whole-tree secret scan)
+        run: python scripts/acceptance_gate.py

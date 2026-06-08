@@ -1,13 +1,16 @@
 # OpenProof
 
+[![CI](https://github.com/sshaunn/OpenProof/actions/workflows/ci.yml/badge.svg)](https://github.com/sshaunn/OpenProof/actions/workflows/ci.yml)
+
 A local-first, Git-first **evidence ledger** and **commit-safety gate** around Claude Code.
 
 OpenProof is the tool *around* the AI coding loop, never one of the agents. v0.1 implements
 one slice: import Claude Code JSONL → a **redacted, content-addressed, repo-bound evidence
 ledger** → promote into Git as an **immutable receipt** you can hand to a second party.
 
-> Status: **v0.1 in development.** The design is frozen (see `docs/openproof-v0.1-definition.md`);
-> the build follows `docs/openproof-implementation-plan.md`.
+> Status: **v0.1 feature-complete** — all five commands work end-to-end (100% test coverage).
+> The published on-disk contract is [SPEC.md](SPEC.md); the commercial boundary is
+> [COMMERCIAL-BOUNDARY.md](COMMERCIAL-BOUNDARY.md).
 
 ## Commands (v0.1)
 
